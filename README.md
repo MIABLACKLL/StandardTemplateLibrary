@@ -1,2 +1,2 @@
 # StandardTemplateLibrary
-### 暂时没啥好写的
+### 参考书《STL源码剖析》侯捷
