@@ -35,10 +35,6 @@ namespace MIA {
 		iterator m_Start;
 		iterator m_Finish;
 		iterator m_EndOfStorage;
-		
-		void _insert_aux(iterator position, const reference vValue);
-		void _insert_aux(iterator position, size_type vSize,const reference vValue);
-		void _insert_aux(iterator position, iterator vBegin, iterator vFinish);
 
 		void _deallocate()
 		{
@@ -61,12 +57,15 @@ namespace MIA {
 			m_DataAllocator.destroy(vPosition);
 		}
 
-		void _construct(iterator vPosition, const reference vValue)
+		template<class ...ValueArg>
+		reference _construct(iterator vPosition, ValueArg&&... vValue)
 		{
-			m_DataAllocator.construct(vPosition, vValue);
+			m_DataAllocator.construct(vPosition, std::forward<ValueArg>(vValue)...);
+			reference voResult = *vPosition;
+			return voResult;
 		}
 
-		void _fillInitialize(size_type vSize,const reference vValue)
+		void _fill_initialize(size_type vSize,const reference vValue)
 		{
 			try
 			{
@@ -75,16 +74,11 @@ namespace MIA {
 				m_EndOfStorage = m_Finish;
 				std::uninitialized_fill_n(m_Start, vSize, vValue);
 			}
-			catch (...)
-			{
-				if (m_Start)
-					_destroy(m_Start, m_Finish);
-				_deallocate();
-			}
+			catch (...) { _tidy(); }
 		}
 
 		template<class IterType>
-		void _fillInitialize(IterType vStart, IterType vFinish, std::forward_iterator_tag)
+		void _fill_initialize(IterType vStart, IterType vFinish, std::forward_iterator_tag)
 		{
 			size_type InitSize = static_cast<size_type>(std::distance(vStart, vFinish));
 			try
@@ -94,73 +88,114 @@ namespace MIA {
 				m_EndOfStorage = m_Finish;
 				std::uninitialized_copy(vStart, vFinish, m_Start);
 			}
-			catch (...)
-			{
-				if (m_Start)
-					_destroy(m_Start, m_Finish);
-				_deallocate();
-			}
+			catch (...) { _tidy(); }
 		}
 
 		template<class IterType>
-		void _fillInitialize(IterType vStart, IterType vFinish, std::input_iterator_tag)
+		void _fill_initialize(IterType vStart, IterType vFinish, std::input_iterator_tag)
 		{
 			try
 			{
 				for (IterType it = vStart; it != vStart; it++)
 					emplace_back(*it);
-
 			}
-			catch (...)
-			{
-				if (m_Start)
-					_destroy(m_Start, m_Finish);
-				_deallocate();
-			}
+			catch (...) { _tidy(); }
+		}
 
+		void _tidy()
+		{
+			if (m_Start && m_Start != m_Finish)
+				_destroy(m_Start, m_Finish);
+			_deallocate();
 		}
 
 	public:
-		iterator begin() { return m_Start; }
-		iterator end() { return m_Finish; }
-		size_type size() const { return static_cast<size_type>(m_Finish - m_Start); }
-		size_type capacity() const{ return static_cast<size_type>(m_EndOfStorage - m_Start); }
-		bool empty()const { return m_Start == m_Finish; }
+		iterator begin() const noexcept { return m_Start; }
+		iterator end() const noexcept { return m_Finish; }
+		size_type size() const noexcept { return static_cast<size_type>(m_Finish - m_Start); }
+		size_type capacity() const noexcept { return static_cast<size_type>(m_EndOfStorage - m_Start); }
+		bool empty()const noexcept { return m_Start == m_Finish; }
 		reference operator[](size_type vIndex) { return *(m_Start + vIndex); }
 
 		Vector() :m_Start(nullptr), m_Finish(nullptr), m_EndOfStorage(nullptr) {}
-		explicit Vector(size_type vSize, const reference vValue) { _fillInitialize(vSize, vValue); }
-		explicit Vector(size_type vSize) { _fillInitialize(vSize, value_type()); }
-
+		explicit Vector(size_type vSize, const reference vValue) { _fill_initialize(vSize, vValue); }
+		explicit Vector(size_type vSize) { _fill_initialize(vSize, value_type()); }
 		template<class IterType>
-		explicit Vector(IterType vBegin, IterType vFinish) { _fillInitialize(vBegin, vFinish, std::iterator_traits<IterType>::iterator_category); }
+		explicit Vector(IterType vBegin, IterType vFinish) { _fill_initialize(vBegin, vFinish, std::iterator_traits<IterType>::iterator_category); }
+		Vector(const Vector& vVector) { _fill_initialize(vVector.begin(), vVector.end(), std::random_access_iterator_tag); }
+		Vector(std::initializer_list<value_type> vList) { _fill_initialize(vList.begin(), vList.end(), std::random_access_iterator_tag); }
 
-		Vector(const Vector& vVector) { _fillInitialize(vVector.begin(), vVector.end(), vVector.capacity()); }
-
-		~Vector()
-		{
-			while (m_Finish != m_Start)
-				m_DataAllocator.destory(m_Finish--);
-			deallocate();
-		
-		}
+		~Vector() noexcept{ _tidy(); }
 
 	private:
+		bool __has_unused_capacity() { return !(m_Finish == m_EndOfStorage); }
+
+		size_type __calculate_growth(size_type vOldSize)
+		{
+			return vOldSize != 0 ? vOldSize * 2 + 1 : 1;
+		}
+
+		template<class ...ValueArg>
+		iterator __emplace_reallocate(iterator vPosition,ValueArg&&... vArg)
+		{
+			const size_type OldSize = size();
+			const size_type NewSize = __calculate_growth(OldSize);
+			try
+			{
+				iterator NewStart = _allocate(NewSize);
+				iterator NewFinish = NewStart;
+				if (vPosition == m_Finish)
+				{
+					NewFinish = std::uninitialized_copy(m_Start, m_Finish, NewStart);
+					_construct(NewFinish++, std::forward(vArg)...);
+				}
+				else
+				{
+					NewFinish = std::uninitialized_copy(m_Start, vPosition, NewStart);
+					_construct(NewFinish++, std::forward(vArg)...);
+					NewFinish = std::uninitialized_copy(vPosition, m_Finish, NewFinish);
+				}
+				_destroy(m_Start, m_Finish);
+				_deallocate();
+				m_Start = NewStart;
+				m_Finish = NewFinish;
+				m_EndOfStorage = NewStart + NewSize;
+			}
+			catch (...) { _tidy(); }
+		}
 
 	public:
 		reference front() { return *m_Start; }
 		reference back() { return *m_Finish; }
 
-		void push_back(const reference vValue){}
-		void push_back(value_type&& vValue){}
+		void push_back(const reference vValue) { emplace_back(vValue); }
+		void push_back(value_type&& vValue) { emplace_back(std::move(vValue);) }
 
 		template<class ...ValueArg>
-		reference emplace_back()
+		reference emplace_back(ValueArg&&... vArg)
 		{
-			if (m_Finish != m_EndOfStorage)
-				_construct(m_Finish++, vValue);
-			else
-				_insert_aux(m_Finish,vValue);
+			reference voResult = *emplace(m_Finish++, std::forward(vArg)...);
+			return voResult;
+		}
+
+		template<class ...ValueArg>
+		iterator emplace(iterator vioPosition, ValueArg&&... vArg)
+		{
+			if (__has_unused_capacity())
+			{
+				if (vioPosition == m_Finish)
+					_construct(vioPosition, std::forward(vArg)...);
+				else
+				{
+					value_type NewObj(std::forward(vArg)...);
+					_construct(m_Finish, std::forward(*(m_Finish - 1)));
+					m_Finish++;
+					std::copy_backward(vioPosition, m_Finish - 2, m_Finish - 1);
+					*vioPosition = std::move(NewObj);
+				}
+				return vioPosition;
+			}
+			return __emplace_reallocate(m_Finish, std::forward(vArg)...);
 		}
 
 		void pop_back() { _destory(--m_Finish); }
@@ -168,9 +203,11 @@ namespace MIA {
 		iterator erase(iterator vPosition);
 		iterator erase(iterator vStart, iterator vFinish);
 
-		void insert(iterator position, const reference vValue);
-		void insert(iterator position, size_type vSize, const reference vValue);
-		void insert(iterator position, iterator vBegin, iterator vFinish);
+		iterator insert(iterator position, const reference vValue);
+		iterator insert(iterator position, size_type vSize, const reference vValue);
+		iterator insert(iterator position, iterator vBegin, iterator vFinish);
+		iterator insert(iterator position, std::initializer_list<value_type>vList);
+
 
 		void clear() { erase(m_Start, m_Finish); }
 
