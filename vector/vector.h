@@ -120,8 +120,10 @@ namespace MIA {
 		Vector() :m_Start(nullptr), m_Finish(nullptr), m_EndOfStorage(nullptr) {}
 		explicit Vector(const size_type vSize, const value_type& vValue) { _fill_initialize(vSize, vValue); }
 		explicit Vector(const size_type vSize) { _fill_initialize(vSize, value_type()); }
-		template<class IterType,class = std::enable_if_t<std::_Is_iterator<IterType>>>
+
+		template<class IterType,class = std::enable_if_t<std::_Is_iterator_v<IterType>>>
 		explicit Vector(IterType vBegin, IterType vFinish) { _fill_initialize(vBegin, vFinish, std::iterator_traits<IterType>::iterator_category{}); }
+		
 		Vector(const Vector& vVector) { _fill_initialize(vVector.begin(), vVector.end(), std::random_access_iterator_tag{}); }
 		Vector(std::initializer_list<value_type> vList) { _fill_initialize(vList.begin(), vList.end(), std::random_access_iterator_tag{}); }
 
@@ -388,7 +390,7 @@ namespace MIA {
 			return m_Start + PositionOff;
 		}
 
-		template<class IterType>
+		template<class IterType,class = std::enable_if_t<std::_Is_iterator_v<IterType>>>
 		iterator insert(iterator vPosition, IterType vBegin, IterType vFinish)
 		{
 			_ASSERT(__check_address(vPosition) && vBegin <= vFinish);
