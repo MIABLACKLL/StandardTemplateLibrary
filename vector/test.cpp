@@ -1,35 +1,29 @@
 #include "pch.h"
 #include "vector.h"
 #include <vector>
-#include <memory>
-#include <iterator>
+#include <map>
 
-class a
-{
-public:
-	int test;
-	a(int x) :test(x) {}
-	a(a& x) :test(std::move(x.test)) { std::cout << "&move" << std::endl; }
-	a(a&& x) :test(std::move(x.test)) { std::cout << "&&move" << std::endl; }
-	a& operator=(const a& other) = default;
-};
-
-template<class ...a>
-void testa(a&&... v)
-{
-	std::cout << "true" << std::endl;
+TEST(Test, TestVectorSizeInit) {
+	MIA::Vector<int> MyVector(5,10);
+	for (auto i : MyVector)
+		EXPECT_EQ(i, 10);
 }
 
-TEST(TestCaseName, TestName) {
-	std::allocator<a> al;
-	a ap(233);
-	const a& ra = ap;
-	a newa(ap);
-	testa(ra);
-	auto pa = al.allocate(1);
-	al.construct(pa, std::move(ap));
-	std::cout << pa->test;
+TEST(Test, TestVectorListInit) {
+	MIA::Vector<int> MyVector = { 1,2,6,5,8 };
+	EXPECT_EQ(MyVector[0], 1);
+	EXPECT_EQ(MyVector[1], 2);
+	EXPECT_EQ(MyVector[2], 6);
+	EXPECT_EQ(MyVector[3], 5);
+	EXPECT_EQ(MyVector[4], 8);
+}
 
-	std::vector<int> aaa;
-
+TEST(Test, TestVectorSelfVectorInit) {
+	MIA::Vector<int> SelfVector = { 1,2,6,5,8 };
+	MIA::Vector<int> MyVector = SelfVector;
+	EXPECT_EQ(MyVector[0], 1);
+	EXPECT_EQ(MyVector[1], 2);
+	EXPECT_EQ(MyVector[2], 6);
+	EXPECT_EQ(MyVector[3], 5);
+	EXPECT_EQ(MyVector[4], 8);
 }
