@@ -43,3 +43,30 @@ TEST(Test, TestVectorIteratorInit) {
 	EXPECT_EQ(MyVector[3], 5);
 	EXPECT_EQ(MyVector[4], 8);
 }
+
+TEST(Test, TestPushBack) {
+	MIA::Vector<int> MyVector;
+	MyVector.push_back(1);
+	EXPECT_EQ(MyVector[0], 1);
+	MyVector.push_back(2);
+	EXPECT_EQ(MyVector[1], 2);
+	MyVector.push_back(6);
+	EXPECT_EQ(MyVector[2], 6);
+	MyVector.push_back(5);
+	EXPECT_EQ(MyVector[3], 5);
+	MyVector.push_back(8);
+	EXPECT_EQ(MyVector[4], 8);
+}
+
+TEST(Test, TestPopBack) {
+	MIA::Vector<int> MyVector = { 1,2,6,5,8 };
+	EXPECT_EQ(MyVector.back(), 8);
+	MyVector.pop_back();
+	EXPECT_EQ(MyVector.back(), 5);
+	MyVector.pop_back();
+	EXPECT_EQ(MyVector.back(), 6);
+	MyVector.pop_back();
+	EXPECT_EQ(MyVector.back(), 2);
+	MyVector.pop_back();
+	EXPECT_EQ(MyVector.back(), 1);
+}

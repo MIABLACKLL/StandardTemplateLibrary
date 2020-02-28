@@ -47,22 +47,20 @@ namespace MIA {
 			return m_DataAllocator.allocate(vSize);
 		}
 
-		void _destroy(iterator vStart,iterator vFinish)
+		void _destroy(const_iterator vStart, const_iterator vFinish)
 		{
 			std::_Destroy_range(vStart, vFinish);
 		}
 
-		void _destroy(iterator vPosition)
+		void _destroy(const_iterator vPosition)
 		{
 			m_DataAllocator.destroy(vPosition);
 		}
 
 		template<class ...ValueArg>
-		reference _construct(iterator vPosition, ValueArg&&... vValue)
+		void _construct(const_iterator vPosition, ValueArg&&... vValue)
 		{
 			m_DataAllocator.construct(vPosition, std::forward<ValueArg>(vValue)...);
-			reference voResult = *vPosition;
-			return voResult;
 		}
 
 		void _fill_initialize(size_type vSize,const value_type& vValue)
@@ -130,18 +128,18 @@ namespace MIA {
 		~Vector() noexcept{ _tidy(); }
 
 	private:
-		bool __has_unused_capacity() { return !(m_Finish == m_EndOfStorage); }
+		bool __has_unused_capacity() { return m_Start && !(m_Finish == m_EndOfStorage); }
 		size_type __unused_capacity() { return static_cast<size_type>(m_EndOfStorage - m_Finish); }
-		bool __check_address(iterator vPosition) { return vPosition >= m_Start && vPosition < m_Finish; }
-		bool __check_address(iterator vStart, iterator vFinish) { return vStart <= vFinish && vStart >= m_Start && vFinish <= m_Finish; }
+		bool __check_address(const_iterator vPosition) { return vPosition >= m_Start && vPosition <= m_Finish; }
+		bool __check_address(const_iterator vStart, const_iterator vFinish) { return vStart <= vFinish && vStart >= m_Start && vFinish <= m_Finish; }
 
 		size_type __calculate_growth(size_type vNewSize)
 		{
-			return vNewSize > size() * 2 ? size() * 2 : vNewSize + size();
+			return vNewSize < size() * 2 ? size() * 2 : vNewSize + size();
 		}
 
 		template<class ...ValueArg>
-		iterator __emplace_reallocate(const iterator vPosition,ValueArg&&... vArg)
+		iterator __emplace_reallocate(iterator vPosition,ValueArg&&... vArg)
 		{
 			const size_type OldSize = size();
 			const size_type NewSize = __calculate_growth(OldSize + 1);
@@ -153,12 +151,12 @@ namespace MIA {
 				if (vPosition == m_Finish)
 				{
 					NewFinish = std::uninitialized_copy(m_Start, m_Finish, NewStart);
-					_construct(NewFinish++, std::forward(vArg)...);
+					_construct(NewFinish++, std::forward<ValueArg>(vArg)...);
 				}
 				else
 				{
 					NewFinish = std::uninitialized_copy(m_Start, vPosition, NewStart);
-					_construct(NewFinish++, std::forward(vArg)...);
+					_construct(NewFinish++, std::forward<ValueArg>(vArg)...);
 					NewFinish = std::uninitialized_copy(vPosition, m_Finish, NewFinish);
 				}
 				_destroy(m_Start, m_Finish);
@@ -254,42 +252,49 @@ namespace MIA {
 
 	public:
 		reference front() { return *m_Start; }
-		reference back() { return *m_Finish; }
+		reference back() { return *(m_Finish-1); }
 
 		void push_back(const reference vValue) { emplace_back(vValue); }
-		void push_back(value_type&& vValue) { emplace_back(std::move(vValue);) }
+		void push_back(value_type&& vValue) { emplace_back(std::move(vValue)); }
 
 		template<class ...ValueArg>
 		reference emplace_back(ValueArg&&... vArg)
 		{
-			reference voResult = *emplace(m_Finish++, std::forward(vArg)...);
-			return voResult;
+			if (__has_unused_capacity())
+				return *emplace(m_Finish, std::forward<ValueArg>(vArg)...);
+			else
+				return *__emplace_reallocate(m_Finish, std::forward<ValueArg>(vArg)...);
 		}
 
 		template<class ...ValueArg>
-		iterator emplace(const_iterator vioPosition, ValueArg&&... vArg)
+		iterator emplace(iterator vPosition, ValueArg&&... vArg)
 		{
-			_ASSERT(__check_address(vioPosition));
+			_ASSERT(__check_address(vPosition));
 			const size_type PositionOff = static_cast<size_type>(vPosition - m_Start);
+
 			if (__has_unused_capacity())
 			{
-				if (vioPosition == m_Finish)
-					_construct(vioPosition, std::forward(vArg)...);
+				if (vPosition == m_Finish)
+				{
+					_construct(vPosition, std::forward<ValueArg>(vArg)...);
+					m_Finish++;
+				}
 				else
 				{
-					value_type NewObj(std::forward(vArg)...);
-					_construct(m_Finish, std::forward(*(m_Finish - 1)));
+					value_type NewObj(std::forward<ValueArg>(vArg)...);
+					_construct(m_Finish, std::move(*(m_Finish - 1)));
 					m_Finish++;
-					std::copy_backward(vioPosition, m_Finish - 2, m_Finish - 1);
-					*vioPosition = std::move(NewObj);
+					std::copy_backward(vPosition, m_Finish - 2, m_Finish - 1);
+					_destroy(vPosition);
+					_construct(vPosition, std::forward<ValueArg>(vArg)...);
 				}
 			}
 			else
-				__emplace_reallocate(vioPosition, std::forward(vArg)...);
+				__emplace_reallocate(vPosition, std::forward<ValueArg>(vArg)...);
 			return m_Start + PositionOff;
 		}
 
-		void pop_back() { _destory(--m_Finish); }
+		void pop_back() { _destroy(--m_Finish); }
 
 		iterator erase(const_iterator vPosition)
 		{
