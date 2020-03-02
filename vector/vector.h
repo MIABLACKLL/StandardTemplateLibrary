@@ -13,6 +13,7 @@ namespace MIA {
 		using iterator = Value * ;
 		using const_iterator = const Value *;
 		using reference = Value & ;
+		using const_reference = const Value & ;
 		using size_type = size_t;
 		using difference_type = ptrdiff_t;
 	};
@@ -27,6 +28,7 @@ namespace MIA {
 		using const_iterator = typename base_iterator::const_iterator;
 		using pointer = typename base_iterator::pointer;
 		using reference = typename base_iterator::reference;
+		using const_reference = typename base_iterator::const_reference;
 		using size_type = typename base_iterator::size_type;
 		using difference_type = typename base_iterator::difference_type;
 
@@ -130,8 +132,8 @@ namespace MIA {
 	private:
 		bool __has_unused_capacity() { return m_Start && !(m_Finish == m_EndOfStorage); }
 		size_type __unused_capacity() { return static_cast<size_type>(m_EndOfStorage - m_Finish); }
-		bool __check_address(const_iterator vPosition) { return vPosition >= m_Start && vPosition <= m_Finish; }
-		bool __check_address(const_iterator vStart, const_iterator vFinish) { return vStart <= vFinish && vStart >= m_Start && vFinish <= m_Finish; }
+		bool __check_address(const_iterator vPosition) { return vPosition && vPosition >= m_Start && vPosition <= m_Finish; }
+		bool __check_address(const_iterator vStart, const_iterator vFinish) { return vStart && vFinish&&vStart <= vFinish && vStart >= m_Start && vFinish <= m_Finish; }
 
 		size_type __calculate_growth(size_type vNewSize)
 		{
@@ -175,7 +177,7 @@ namespace MIA {
 		}
 
 		template<class IterType>
-		void __insert_range(const_iterator vPosition, IterType vStart, IterType vFinish, std::input_iterator_tag)
+		void __insert_range(iterator vPosition, IterType vStart, IterType vFinish, std::input_iterator_tag)
 		{
 			if (vStart == vFinish)
 				return;
@@ -191,7 +193,7 @@ namespace MIA {
 		}
 
 		template<class IterType>
-		void __insert_range(const_iterator vPosition, IterType vStart, IterType vFinish, std::forward_iterator_tag)
+		void __insert_range(iterator vPosition, IterType vStart, IterType vFinish, std::forward_iterator_tag)
 		{
 			if (vStart == vFinish)
 				return;
@@ -205,9 +207,9 @@ namespace MIA {
 					const size_type PositionAfterElement = static_cast<size_type>(m_Finish - vPosition);
 					if (vPosition == m_Finish)
 					{
-						m_Finish = std::uninitialized_copy(vStart, vFinish,vPosition)
+						m_Finish = std::uninitialized_copy(vStart, vFinish, vPosition);
 					}
-					else if (PositionAfterElement > vSize)
+					else if (PositionAfterElement > InsertSize)
 					{
 						std::uninitialized_copy(m_Finish - InsertSize, m_Finish, m_Finish);
 						std::copy_backward(vPosition, m_Finish - InsertSize, m_Finish);
@@ -247,12 +249,11 @@ namespace MIA {
 					}
 				}
 			}
-			return m_Start + PositionOff;
 		}
 
 	public:
-		reference front() { return *m_Start; }
-		reference back() { return *(m_Finish-1); }
+		const_reference front() { return *m_Start; }
+		const_reference back() { return *(m_Finish-1); }
 
 		void push_back(const reference vValue) { emplace_back(vValue); }
 		void push_back(value_type&& vValue) { emplace_back(std::move(vValue)); }
@@ -296,7 +297,7 @@ namespace MIA {
 
 		void pop_back() { _destroy(--m_Finish); }
 
-		iterator erase(const_iterator vPosition)
+		iterator erase(iterator vPosition)
 		{
 			_ASSERT(__check_address(vPosition));
 			if (vPosition + 1 != m_Finish)
@@ -305,15 +306,16 @@ namespace MIA {
 			return vPosition;
 		}
 
-		iterator erase(const_iterator vStart, const_iterator vFinish)
+		iterator erase(iterator vStart, iterator vFinish)
 		{
 			_ASSERT(__check_address(vStart, vFinish));
-			if ( vFinish != vStart)
+			if (vFinish != vStart)
 			{
 				if (vFinish != m_Finish)
 					std::copy(vFinish, m_Finish, vStart);
 				iterator NewFinish = m_Finish - (vFinish - vStart);
 				_destroy(NewFinish, m_Finish);		
+				m_Finish = NewFinish;
 			}
 			return vStart;
 		}
@@ -328,7 +330,7 @@ namespace MIA {
 				insert(m_Finish, vNewSize - size(), vValue);
 		}
 
-		iterator insert(iterator vPosition, const reference vValue) 
+		iterator insert(iterator vPosition, const value_type& vValue)
 		{ 
 			_ASSERT(__check_address(vPosition));
 			return emplace(vPosition, vValue); 
@@ -340,7 +342,7 @@ namespace MIA {
 			return emplace(vPosition, std::move(vValue)); 
 		}
 
-		iterator insert(iterator vPosition, size_type vSize, const reference vValue)
+		iterator insert(iterator vPosition, size_type vSize, const value_type& vValue)
 		{
 			_ASSERT(__check_address(vPosition) && vSize);
 			const size_type PositionOff = static_cast<size_type>(vPosition - m_Start);
@@ -408,7 +410,7 @@ namespace MIA {
 		{
 			_ASSERT(__check_address(vPosition));
 			const size_type PositionOff = static_cast<size_type>(vPosition - m_Start);
-			__insert_range(vPosition, vBegin, vFinish, std::random_access_iterator_tag{});
+			__insert_range(vPosition, vList.begin(), vList.end(), std::random_access_iterator_tag{});
 			return m_Start + PositionOff;
 		}
 

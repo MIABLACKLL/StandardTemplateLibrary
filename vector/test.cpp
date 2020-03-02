@@ -2,6 +2,7 @@
 #include "vector.h"
 #include <vector>
 #include <map>
+#include <queue>
 
 TEST(Test, TestVectorSizeInit) {
 	MIA::Vector<int> MyVector(5);
@@ -69,4 +70,83 @@ TEST(Test, TestPopBack) {
 	EXPECT_EQ(MyVector.back(), 2);
 	MyVector.pop_back();
 	EXPECT_EQ(MyVector.back(), 1);
+}
+
+TEST(Test, TestEraseElement) {
+	MIA::Vector<int> MyVector = { 1,2,6,5,8 };
+	auto it = std::find(MyVector.begin(), MyVector.end(), 6);
+	MyVector.erase(it);
+	EXPECT_EQ(MyVector[0], 1);
+	EXPECT_EQ(MyVector[1], 2);
+	EXPECT_EQ(MyVector[2], 5);
+	EXPECT_EQ(MyVector[3], 8);
+}
+
+TEST(Test, TestClear) {
+	MIA::Vector<int> MyVector = { 1,2,6,5,8 };
+	MyVector.clear();
+	EXPECT_EQ(MyVector.begin(), MyVector.end());
+}
+
+TEST(Test, TestInsertElement) {
+	MIA::Vector<int> MyVector = { 1,2,6,5,8 };
+	auto it = std::find(MyVector.begin(), MyVector.end(), 6);
+	MyVector.insert(it,999);
+	EXPECT_EQ(MyVector[0], 1);
+	EXPECT_EQ(MyVector[1], 2);
+	EXPECT_EQ(MyVector[2], 999);
+	EXPECT_EQ(MyVector[3], 6);
+	EXPECT_EQ(MyVector[4], 5);
+	EXPECT_EQ(MyVector[5], 8);
+}
+
+TEST(Test, TestInsertMultElements) {
+	MIA::Vector<int> MyVector = { 1,2,6,5,8 };
+	auto it = std::find(MyVector.begin(), MyVector.end(), 6);
+	MyVector.insert(it, 3, 999);
+	EXPECT_EQ(MyVector[0], 1);
+	EXPECT_EQ(MyVector[1], 2);
+	EXPECT_EQ(MyVector[2], 999);
+	EXPECT_EQ(MyVector[3], 999);
+	EXPECT_EQ(MyVector[4], 999);
+	EXPECT_EQ(MyVector[5], 6);
+	EXPECT_EQ(MyVector[6], 5);
+	EXPECT_EQ(MyVector[7], 8);
+}
+
+TEST(Test, TestInsertList) {
+	MIA::Vector<int> MyVector = { 1,2,6,5,8 };
+	auto it = std::find(MyVector.begin(), MyVector.end(), 6);
+	MyVector.insert(it, { 997,998,999 });
+	EXPECT_EQ(MyVector[0], 1);
+	EXPECT_EQ(MyVector[1], 2);
+	EXPECT_EQ(MyVector[2], 997);
+	EXPECT_EQ(MyVector[3], 998);
+	EXPECT_EQ(MyVector[4], 999);
+	EXPECT_EQ(MyVector[5], 6);
+	EXPECT_EQ(MyVector[6], 5);
+	EXPECT_EQ(MyVector[7], 8);
+}
+
+TEST(Test, TestInsertVector) {
+	std::vector<int> SelfVector = { 997,998,999 };
+	MIA::Vector<int> MyVector = { 1,2,6,5,8 };
+	auto it = std::find(MyVector.begin(), MyVector.end(), 6);
+	MyVector.insert(it, SelfVector.begin(), SelfVector.end());
+	EXPECT_EQ(MyVector[0], 1);
+	EXPECT_EQ(MyVector[1], 2);
+	EXPECT_EQ(MyVector[2], 997);
+	EXPECT_EQ(MyVector[3], 998);
+	EXPECT_EQ(MyVector[4], 999);
+	EXPECT_EQ(MyVector[5], 6);
+	EXPECT_EQ(MyVector[6], 5);
+	EXPECT_EQ(MyVector[7], 8);
+}
+
+int main(int argc, char* argv[])
+{
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+	::testing::InitGoogleTest(&argc, argv);
+	RUN_ALL_TESTS();
+	return 0;
 }
