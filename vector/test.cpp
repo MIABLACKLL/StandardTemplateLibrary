@@ -82,6 +82,15 @@ TEST(Test, TestEraseElement) {
 	EXPECT_EQ(MyVector[3], 8);
 }
 
+TEST(Test, TestEraseMultElements) {
+	MIA::Vector<int> MyVector = { 1,2,6,5,8 };
+	auto it = std::find(MyVector.begin(), MyVector.end(), 6);
+	MyVector.erase(it, it+2);
+	EXPECT_EQ(MyVector[0], 1);
+	EXPECT_EQ(MyVector[1], 2);
+	EXPECT_EQ(MyVector[2], 8);
+}
+
 TEST(Test, TestClear) {
 	MIA::Vector<int> MyVector = { 1,2,6,5,8 };
 	MyVector.clear();

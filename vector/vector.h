@@ -3,19 +3,19 @@
 #include <memory>
 
 namespace MIA {
-	template <class Value>
+	template <class Value,class Alloc>
 	class VectorIterator
 	{
 	public:
-		using iterator_category = std::random_access_iterator_tag;
-		using value_type = Value;
-		using pointer = Value * ;
+		using _Alty_traits = std::allocator_traits<Alloc>;
+		using value_type = typename _Alty_traits::value_type;
+		using pointer = typename  _Alty_traits::pointer;
+		using size_type = typename _Alty_traits::size_type;
+		using difference_type = typename _Alty_traits::difference_type;
 		using iterator = Value * ;
 		using const_iterator = const Value *;
 		using reference = Value & ;
-		using const_reference = const Value & ;
-		using size_type = size_t;
-		using difference_type = ptrdiff_t;
+		using const_reference = const Value &;
 	};
 
 	template <class Value, class Alloc = std::allocator<Value>>
@@ -23,7 +23,7 @@ namespace MIA {
 	{
 	public:
 		using value_type = Value;
-		using base_iterator = VectorIterator<value_type>;
+		using base_iterator = VectorIterator<Value, Alloc>;
 		using iterator = typename base_iterator::iterator;
 		using const_iterator = typename base_iterator::const_iterator;
 		using pointer = typename base_iterator::pointer;
@@ -31,6 +31,7 @@ namespace MIA {
 		using const_reference = typename base_iterator::const_reference;
 		using size_type = typename base_iterator::size_type;
 		using difference_type = typename base_iterator::difference_type;
+		using _Alty_traits = typename base_iterator::_Alty_traits;
 
 	protected:
 		Alloc m_DataAllocator;
