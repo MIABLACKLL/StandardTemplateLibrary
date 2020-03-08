@@ -1,4 +1,6 @@
 #pragma once
+#ifndef _MIA_VECTOR
+#define _MIA_VECTOR
 #include <cstddef>
 #include <memory>
 
@@ -418,3 +420,5 @@ namespace MIA {
 		void clear() { erase(m_Start, m_Finish); }
 	};
 }
+
+#endif // _MIA_VECTOR
